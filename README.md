@@ -73,6 +73,8 @@ file.close()
 ![xml file screen shot](https://user-images.githubusercontent.com/34162166/38451713-8f6ab16a-3a52-11e8-88ea-1d2e49ec1e1a.png)
 
 
+
+
 ------- Code for TXT Data-----------------
 
 from random import choice
@@ -120,5 +122,69 @@ file.close()
 ---- Data ScreenShot---
 
 ![txt file screenshot](https://user-images.githubusercontent.com/34162166/38451715-948ff146-3a52-11e8-909c-a0f632278b0f.png)
+
+
+----- Create Logs and Batch file Code-------------
+#!/bin/bash
+
+if [-f "home/acadgild/project/logs/current-batch.txt" ]
+then 
+	echo "Batch File Found!"
+else 
+	echo -n "1" > "/home/acadgild/project/logs/current-batch.txt"
+fi
+
+chmod 775 /home/acadgild/project/logs/current-batch.txt
+batchid= cat /home/acadgild/prject/logs/current-batch.txt
+LOGFILE=/home/acadgild/project/logs/log_batch_$batchid
+
+echo "starting daemons" >> $LOGFILE
+
+start-all.sh
+start-hbase.sh
+mr-jobhistory-daemon.sh start historyserver
+
+
+------------------- Populate Lookup Tables-------------------------------------------
+
+#!/bin/bash
+
+batchid= cat /home/acadgild/project/logs/current-batch.txt
+
+LOGFILE=/home/acadgild/project/logs/log_batch_$batchid
+
+echo "Creating LookUP Tables" >> $LOGFILE
+
+echo "create 'station-geo-map','geo'" | hbase shell
+echo "create 'subscribed-users','subscn'" | hbase shell
+echo "create 'song-artist-map','artist'" | hbase shell
+
+
+echo "Populating LookUP Tables" >> $LOGFILE
+
+IFS=","
+while read f1 f2
+do  
+       echo "put 'station-geo-map','$f1','geo:geo_cd','$f2'" | hbase shell
+
+done < "/home/acadgild/project/lookupfiles/stn-geocd.txt"
+
+
+IFS=","
+while read f1 f2
+do 
+        echo "put 'song-artist-map','$f1','artist:artistid','$f2'" | hbase shell
+
+done < "/home/acadgild/project/lookupfiles/song-artist.txt"
+
+IFS=","
+while read f1 f2 f3
+do 
+        echo "put 'subscribed-users','$f1','subscn:startdt','$f2'" | hbase shell
+        echo "put 'subscribed-users','$f1','subscn:enddt','$f3'" | hbase shell
+done "/home/acadgild/project/lookupfiles/user-subscn.txt"
+
+#!hive -f /home/acadgild/project/scripts/user-artist.hql
+
 
 
